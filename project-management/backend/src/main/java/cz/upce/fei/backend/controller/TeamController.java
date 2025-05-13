@@ -20,7 +20,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api/teams")
+@RequestMapping("/api/teams") // Základní cesta pro práci s týmy
 public class TeamController {
 
     @Autowired private TeamRepository teamRepository;
@@ -28,6 +28,7 @@ public class TeamController {
     @Autowired private UserRepository userRepository;
     @Autowired private UserMapper userMapper;
 
+    // Získání všech týmů jako seznam DTO objektů
     @GetMapping
     public List<TeamDTO> getAllTeams() {
         return teamRepository.findAll().stream().map(team -> new TeamDTO(
@@ -37,6 +38,7 @@ public class TeamController {
         )).collect(Collectors.toList());
     }
 
+    // Získání členů konkrétního týmu podle ID
     @GetMapping("/{id}/members")
     public List<UserDTO> getTeamMembers(@PathVariable Long id) {
         return teamRepository.findById(id)
@@ -45,6 +47,8 @@ public class TeamController {
                         .collect(Collectors.toList()))
                 .orElse(List.of());
     }
+
+    // Přidání člena do týmu – pouze pro manažera
     @PreAuthorize("hasRole('manager')")
     @PatchMapping("/{teamId}/add-member/{userId}")
     public ResponseEntity<?> addMemberToTeam(@PathVariable Long teamId, @PathVariable Long userId) {
@@ -52,12 +56,13 @@ public class TeamController {
         Optional<User> userOpt = userRepository.findById(userId);
 
         if (teamOpt.isEmpty() || userOpt.isEmpty()) {
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.notFound().build(); // Tým nebo uživatel neexistuje
         }
 
         Team team = teamOpt.get();
         User user = userOpt.get();
 
+        // Pokud uživatel není v týmu, přidáme ho
         if (!team.getMembers().contains(user)) {
             team.getMembers().add(user);
             teamRepository.save(team);
@@ -66,6 +71,7 @@ public class TeamController {
         return ResponseEntity.ok().build();
     }
 
+    // Odebrání člena z týmu – pouze pro manažera
     @PreAuthorize("hasRole('manager')")
     @PatchMapping("/{teamId}/remove-member/{userId}")
     public ResponseEntity<?> removeMemberFromTeam(@PathVariable Long teamId, @PathVariable Long userId) {
@@ -73,12 +79,13 @@ public class TeamController {
         Optional<User> userOpt = userRepository.findById(userId);
 
         if (teamOpt.isEmpty() || userOpt.isEmpty()) {
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.notFound().build(); // Tým nebo uživatel neexistuje
         }
 
         Team team = teamOpt.get();
         User user = userOpt.get();
 
+        // Pokud je uživatel v týmu, odebereme ho
         if (team.getMembers().contains(user)) {
             team.getMembers().remove(user);
             teamRepository.save(team);
@@ -87,14 +94,19 @@ public class TeamController {
         return ResponseEntity.ok().build();
     }
 
+    // Vytvoření nového týmu a přiřazení členů – pouze pro manažera
     @PreAuthorize("hasRole('manager')")
     @PostMapping
     public ResponseEntity<TeamDTO> createTeam(@RequestBody TeamDTO dto) {
+        // Načteme uživatele podle jejich ID
         List<User> users = userRepository.findAllById(dto.getMemberIds());
+
+        // Vytvoření a uložení týmu
         Team team = new Team(dto.getName());
         team.setMembers(users);
         Team saved = teamRepository.save(team);
 
+        // Vrácení DTO odpovědi
         List<Long> memberIds = saved.getMembers().stream()
                 .map(User::getId)
                 .collect(Collectors.toList());
@@ -102,6 +114,7 @@ public class TeamController {
         return ResponseEntity.ok(new TeamDTO(saved.getId(), saved.getName(), memberIds));
     }
 
+    // Přiřazení týmu ke konkrétnímu projektu – pouze pro manažera
     @PreAuthorize("hasRole('manager')")
     @PostMapping("/assign-to-project/{projectId}/{teamId}")
     public ResponseEntity<?> assignTeamToProject(@PathVariable Long projectId, @PathVariable Long teamId) {
@@ -109,9 +122,10 @@ public class TeamController {
         Optional<Team> teamOpt = teamRepository.findById(teamId);
 
         if (projectOpt.isEmpty() || teamOpt.isEmpty()) {
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.notFound().build(); // Projekt nebo tým nenalezen
         }
 
+        // Přiřazení týmu projektu a uložení změny
         Project project = projectOpt.get();
         Team team = teamOpt.get();
 
@@ -121,4 +135,3 @@ public class TeamController {
         return ResponseEntity.ok().build();
     }
 }
-

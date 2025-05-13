@@ -1,3 +1,4 @@
+// src/main/java/cz/upce/fei/backend/controller/TaskController.java
 package cz.upce.fei.backend.controller;
 
 import cz.upce.fei.backend.dto.TaskDTO;
@@ -19,13 +20,14 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api/tasks")
+@RequestMapping("/api/tasks") // Základní URL cesta pro práci s úkoly
 public class TaskController {
 
     private final TaskRepository taskRepository;
     private final ProjectRepository projectRepository;
     private final UserRepository userRepository;
 
+    // Konstruktor – dependency injection repozitářů
     @Autowired
     public TaskController(TaskRepository taskRepository,
                           ProjectRepository projectRepository,
@@ -35,11 +37,13 @@ public class TaskController {
         this.userRepository = userRepository;
     }
 
+    // Získání všech úkolů – podle role se filtrují
     @GetMapping
     public List<TaskDTO> getAllTasks(Authentication auth) {
         User currentUser = userRepository.findByUsername(auth.getName());
         String role = currentUser.getRole().getName();
 
+        // Pokud je uživatel developer nebo tester, vrací se pouze úkoly jeho týmů
         if (role.equals("developer") || role.equals("tester")) {
             Set<Long> teamIds = currentUser.getTeams().stream()
                     .map(Team::getId)
@@ -54,11 +58,13 @@ public class TaskController {
                     .collect(Collectors.toList());
         }
 
+        // Ostatní uživatelé (např. manažeři) vidí všechny úkoly
         return taskRepository.findAll().stream()
                 .map(TaskMapper::toDTO)
                 .collect(Collectors.toList());
     }
 
+    // Získání konkrétního úkolu podle ID
     @GetMapping("/{id}")
     public ResponseEntity<TaskDTO> getTaskById(@PathVariable Long id) {
         return taskRepository.findById(id)
@@ -66,32 +72,40 @@ public class TaskController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    // Vytvoření nového úkolu
     @PostMapping
     public ResponseEntity<TaskDTO> createTask(@RequestBody @Valid TaskDTO dto) {
+        // Ověříme, že projekt existuje
         Project project = projectRepository.findById(dto.getProjectId()).orElse(null);
         if (project == null) return ResponseEntity.badRequest().build();
 
+        // Volitelné – přiřazený uživatel
         User assignee = null;
         if (dto.getAssigneeId() != null) {
             assignee = userRepository.findById(dto.getAssigneeId()).orElse(null);
         }
 
+        // Vytvoření a uložení úkolu
         Task task = TaskMapper.toEntity(dto, project, assignee);
         Task saved = taskRepository.save(task);
         return ResponseEntity.ok(TaskMapper.toDTO(saved));
     }
 
+    // Úprava existujícího úkolu
     @PutMapping("/{id}")
     public ResponseEntity<?> updateTask(@PathVariable Long id, @RequestBody @Valid TaskDTO dto) {
         return taskRepository.findById(id).map(existing -> {
+            // Kontrola existence projektu
             Project project = projectRepository.findById(dto.getProjectId()).orElse(null);
             if (project == null) return ResponseEntity.badRequest().build();
 
+            // Přiřazený uživatel
             User assignee = null;
             if (dto.getAssigneeId() != null) {
                 assignee = userRepository.findById(dto.getAssigneeId()).orElse(null);
             }
 
+            // Aktualizace údajů úkolu
             existing.setTitle(dto.getTitle());
             existing.setDescription(dto.getDescription());
             existing.setStatus(dto.getStatus());
@@ -104,6 +118,7 @@ public class TaskController {
         }).orElse(ResponseEntity.notFound().build());
     }
 
+    // Smazání úkolu podle ID
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteTask(@PathVariable Long id) {
         if (!taskRepository.existsById(id)) return ResponseEntity.notFound().build();
@@ -111,6 +126,7 @@ public class TaskController {
         return ResponseEntity.noContent().build();
     }
 
+    // Změna stavu úkolu (PATCH – částečná aktualizace)
     @PatchMapping("/{id}/status")
     public ResponseEntity<String> updateTaskStatus(@PathVariable Long id, @RequestBody Map<String, String> body) {
         try {
@@ -129,6 +145,7 @@ public class TaskController {
         }
     }
 
+    // Získání všech úkolů přiřazených k danému projektu
     @GetMapping("/project/{projectId}")
     public List<TaskDTO> getTasksByProject(@PathVariable Long projectId) {
         return taskRepository.findByProjectId(projectId).stream()
