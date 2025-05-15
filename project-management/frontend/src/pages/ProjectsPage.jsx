@@ -19,7 +19,8 @@ function ProjectsPage() {
     (async () => {
       try {
         const data = await getProjects();
-        setProjects(data);
+        const visibleProjects = data.filter((p) => p.status !== "Done");
+        setProjects(visibleProjects);
       } catch (e) {
         console.error(e);
         setError("Chyba při načítání projektů");

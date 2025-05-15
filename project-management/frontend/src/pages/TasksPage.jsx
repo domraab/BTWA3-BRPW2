@@ -38,7 +38,7 @@ function TasksPage() {
       <div className="mb-3">
         <label className="form-label">Filter by status:</label>
         <select
-          className="form-select"
+          className="w-full px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           value={filterStatus}
           onChange={(e) => setFilter(e.target.value)}
           style={{ maxWidth: "200px" }}

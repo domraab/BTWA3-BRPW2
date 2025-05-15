@@ -134,4 +134,13 @@ public class TeamController {
 
         return ResponseEntity.ok().build();
     }
+    @PreAuthorize("hasRole('manager')")
+    @DeleteMapping("/{teamId}")
+    public ResponseEntity<Void> deleteTeam(@PathVariable Long teamId) {
+        if (!teamRepository.existsById(teamId)) {
+            return ResponseEntity.notFound().build();
+        }
+        teamRepository.deleteById(teamId);
+        return ResponseEntity.noContent().build();
+    }
 }

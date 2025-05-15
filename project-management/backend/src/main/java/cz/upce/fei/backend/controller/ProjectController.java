@@ -117,6 +117,12 @@ public class ProjectController {
             return ResponseEntity.ok(ProjectMapper.toDTO(updated));
         }).orElse(ResponseEntity.notFound().build()); // Projekt nenalezen
     }
+    @GetMapping("/by-team/{teamId}")
+    public List<ProjectDTO> getProjectsByTeam(@PathVariable Long teamId) {
+        return projectRepository.findByTeamId(teamId).stream()
+                .map(ProjectMapper::toDTO)
+                .collect(Collectors.toList());
+    }
 
     // Změna pouze stavu projektu (PATCH)
     @PatchMapping("/{id}/status")

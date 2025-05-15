@@ -11,4 +11,5 @@ import java.util.Set;
 @Repository
 public interface ProjectRepository extends JpaRepository<Project, Long> {
     List<Project> findByTeamIn(Set<Team> teams);
+    List<Project> findByTeamId(Long teamId);
 }

@@ -44,6 +44,26 @@ export async function getTeamMembers(teamId) {
   }
   return res.json();
 }
+export async function getProjectsByTeam(teamId) {
+  const res = await fetch(`${API}/projects/by-team/${teamId}`, {
+    headers: authHeaders(),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `Chyba při načítání projektů týmu (${res.status})`);
+  }
+  return res.json();
+}
+export async function deleteTeam(teamId) {
+  const res = await fetch(`${API}/teams/${teamId}`, {
+    method: "DELETE",
+    headers: authHeaders(),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `Chyba při mazání týmu (${res.status})`);
+  }
+}
 
 export async function addMemberToTeam(teamId, userId) {
   const res = await fetch(`${API}/teams/${teamId}/add-member/${userId}`, {

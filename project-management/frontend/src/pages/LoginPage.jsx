@@ -77,9 +77,7 @@ function LoginPage() {
                 <div className="text-center">
                   <Link to="/register" className="small">Create an account</Link>
                 </div>
-                <div className="text-center mt-2">
-                  <a className="small" href="#!">Forgot Password?</a>
-                </div>
+                
               </div>
             </div>
           </div>

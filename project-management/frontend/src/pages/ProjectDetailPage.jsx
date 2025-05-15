@@ -3,10 +3,9 @@ import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { getProjectById, updateProjectStatus, assignTeamToProject } from "../services/projectService";
 import { getTeams } from "../services/teamService";
-import { getTasks, createTask } from "../services/taskService";
+import { getTasks, createTask, updateTaskStatus } from "../services/taskService";
 import { getCurrentUser } from "../services/authService";
-import TaskList from "../components/Task/TaskList";
-import TaskForm from "../components/Task/TaskForm";
+import TaskModal from "../components/Task/TaskModal";
 
 function ProjectDetailPage() {
   const { id } = useParams();
@@ -16,6 +15,7 @@ function ProjectDetailPage() {
   const [user, setUser] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [modalOpen, setModalOpen] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -24,10 +24,12 @@ function ProjectDetailPage() {
         setProject(proj);
 
         const allTasks = await getTasks();
-        setProjectTasks(allTasks.filter((t) => t.projectId === proj.id));
-
         const me = await getCurrentUser();
         setUser(me);
+
+        const visibleTasks = allTasks.filter((t) => t.projectId === proj.id);
+        setProjectTasks(visibleTasks);
+
 
         if (me.role === "manager") {
           const teamList = await getTeams();
@@ -53,17 +55,6 @@ function ProjectDetailPage() {
     }
   };
 
-  const handleCreateTask = async (taskData) => {
-    setError("");
-    try {
-      const created = await createTask(taskData);
-      setProjectTasks((prev) => [...prev, created]);
-    } catch (e) {
-      console.error("Failed to create task", e);
-      setError("Failed to create new task.");
-    }
-  };
-
   const handleAssignTeam = async (teamId) => {
     try {
       await assignTeamToProject(project.id, teamId);
@@ -73,6 +64,35 @@ function ProjectDetailPage() {
       setError("Failed to assign team to project.");
     }
   };
+
+  const handleCreateTask = async (data) => {
+    try {
+      const newTask = await createTask({
+        ...data,
+        projectId: project.id,
+        status: data.status || "Pending",
+      });
+      setProjectTasks((prev) => [...prev, newTask]);
+    } catch (err) {
+      console.error("Failed to create task", err);
+      setError("Failed to create new task.");
+    }
+  };
+
+  const handleTaskStatusChange = async (taskId, newStatus) => {
+    try {
+      await updateTaskStatus(taskId, newStatus);
+      setProjectTasks((prev) =>
+        prev.map((task) =>
+          task.id === taskId ? { ...task, status: newStatus } : task
+        )
+      );
+    } catch (err) {
+      console.error("Failed to update task status", err);
+    }
+  };
+
+  const allTasksDone = projectTasks.length > 0 && projectTasks.every((task) => task.status === "Done");
 
   if (loading) return <div className="container-fluid"><p>Loading…</p></div>;
   if (!project) return <div className="container-fluid"><h2 className="h4 text-gray-800">Project not found</h2></div>;
@@ -90,13 +110,18 @@ function ProjectDetailPage() {
 
           <div className="mb-3">
             <button className="btn btn-sm btn-secondary me-2" onClick={() => handleChangeStatus("In Progress")}>Set In Progress</button>
-            <button className="btn btn-sm btn-success" onClick={() => handleChangeStatus("Done")}>Set Done</button>
           </div>
 
           {user?.role === "manager" && (
-            <div className="mt-3">
-              <label className="form-label">Assign Team:</label>
-              <select className="form-select" onChange={(e) => handleAssignTeam(e.target.value)} value={project.teamId || ""}>
+            <div className="mt-6">
+              <label className="block text-sm font-medium text-gray-600 mb-3">
+                Assign Team:
+              </label>
+              <select
+                className="w-full px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                onChange={(e) => handleAssignTeam(e.target.value)}
+                value={project.teamId || ""}
+              >
                 <option value="">-- Select Team --</option>
                 {teams.map((team) => (
                   <option key={team.id} value={team.id}>{team.name}</option>
@@ -104,26 +129,43 @@ function ProjectDetailPage() {
               </select>
             </div>
           )}
+
+          <div className="mt-5">
+            <label className="block text-sm font-medium text-gray-600 mb-2">Task:</label>
+            {projectTasks.map((task) => (
+              <div key={task.id} className="d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
+                <div>
+                  <strong>{task.title}</strong>
+                  <div><small>{task.description}</small></div>
+                </div>
+                <select
+                  className="w-full px-4 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  value={task.status}
+                  onChange={(e) => handleTaskStatusChange(task.id, e.target.value)}
+                >
+                  <option value="Pending">Pending</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="On Hold">On Hold</option>
+                  <option value="Done">Done</option>
+                </select>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
-      <div className="card shadow mb-4">
-        <div className="card-header py-3">
-          <h6 className="m-0 font-weight-bold text-primary">Tasks for this project</h6>
+      {user?.role === "manager" && allTasksDone && project.status !== "Done" && (
+        <div className="text-end mt-3">
+          <button className="btn btn-sm btn-success" onClick={() => handleChangeStatus("Done")}> Finish Project</button>
         </div>
-        <div className="card-body">
-          {projectTasks.length === 0 ? <p>No tasks found for this project.</p> : <TaskList tasks={projectTasks} />}
-        </div>
-      </div>
+      )}
 
-      <div className="card shadow mb-4">
-        <div className="card-header py-3">
-          <h6 className="m-0 font-weight-bold text-primary">Create New Task</h6>
-        </div>
-        <div className="card-body">
-          <TaskForm onSubmit={handleCreateTask} projectId={project.id} />
-        </div>
-      </div>
+      <TaskModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onCreate={handleCreateTask}
+        initialStatus="Pending"
+      />
     </div>
   );
 }

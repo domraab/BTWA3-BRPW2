@@ -3,7 +3,8 @@ import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 import { getTasksByProject, updateTaskStatus, createTask } from "../services/taskService";
-import { getProjectById } from "../services/projectService";
+import { getProjectById, updateProjectStatus } from "../services/projectService";
+import { getCurrentUser } from "../services/authService";
 import TaskModal from "../components/Task/TaskModal";
 
 const STATUSES = ["Pending", "In Progress", "On Hold", "Done"];
@@ -15,16 +16,19 @@ export default function KanbanBoardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [modalOpen, setModalOpen] = useState(null); // null = zavřeno, jinak status
+  const [user, setUser] = useState(null);
 
   useEffect(() => {
     (async () => {
       try {
-        const [proj, taskList] = await Promise.all([
+        const [proj, taskList, me] = await Promise.all([
           getProjectById(projectId),
           getTasksByProject(projectId),
+          getCurrentUser(),
         ]);
         setProject(proj);
         setTasks(taskList);
+        setUser(me);
       } catch (err) {
         console.error(err);
         setError("Failed to load project or tasks");
@@ -53,8 +57,6 @@ export default function KanbanBoardPage() {
     }
   };
 
-  const getTasksByStatus = (status) => tasks.filter((t) => t.status === status);
-
   const handleCreateTask = async (data) => {
     try {
       const newTask = await createTask({
@@ -66,6 +68,17 @@ export default function KanbanBoardPage() {
       console.error("Failed to create task", err);
     }
   };
+
+  const handleFinishProject = async () => {
+    try {
+      await updateProjectStatus(project.id, "Done");
+      setProject((prev) => ({ ...prev, status: "Done" }));
+    } catch (err) {
+      console.error("Failed to finish project", err);
+    }
+  };
+
+  const allTasksDone = tasks.length > 0 && tasks.every((task) => task.status === "Done");
 
   if (loading) return <p>Loading…</p>;
   if (error) return <div className="alert alert-danger">{error}</div>;
@@ -95,25 +108,27 @@ export default function KanbanBoardPage() {
                       className="card-body min-vh-25"
                       style={{ minHeight: "200px" }}
                     >
-                      {getTasksByStatus(status).map((task, index) => (
-                        <Draggable
-                          draggableId={String(task.id)}
-                          index={index}
-                          key={task.id}
-                        >
-                          {(provided) => (
-                            <div
-                              ref={provided.innerRef}
-                              {...provided.draggableProps}
-                              {...provided.dragHandleProps}
-                              className="card mb-2 p-2 shadow-sm"
-                            >
-                              <div className="fw-bold">{task.title}</div>
-                              <small>{task.description}</small>
-                            </div>
-                          )}
-                        </Draggable>
-                      ))}
+                      {tasks
+                        .filter((t) => t.status === status)
+                        .map((task, index) => (
+                          <Draggable
+                            draggableId={String(task.id)}
+                            index={index}
+                            key={task.id}
+                          >
+                            {(provided) => (
+                              <div
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                {...provided.dragHandleProps}
+                                className="card mb-2 p-2 shadow-sm"
+                              >
+                                <div className="fw-bold">{task.title}</div>
+                                <small>{task.description}</small>
+                              </div>
+                            )}
+                          </Draggable>
+                        ))}
                       {provided.placeholder}
                     </div>
                   )}
@@ -123,6 +138,12 @@ export default function KanbanBoardPage() {
           ))}
         </div>
       </DragDropContext>
+
+      {user?.role === "manager" && allTasksDone && project.status !== "Done" && (
+        <div className="text-end mt-3">
+          <button className="btn btn-sm btn-success" onClick={handleFinishProject}>Finish Project</button>
+        </div>
+      )}
 
       <TaskModal
         isOpen={modalOpen !== null}
