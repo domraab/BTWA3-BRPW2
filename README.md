@@ -1,51 +1,60 @@
-# 📝 Semestrální práce – Backend pro správu úkolů v projektech
+# 📌 Semestrální práce – Taskly (Správa úkolů v projektech)
 
 ## 🎯 Popis projektu a cíle práce
 
-Cílem projektu je implementace funkční větve backendové části systému pro správu úkolů (Task Management) v rámci jednotlivých projektů. Důraz je kladen na správnou architekturu, validaci vstupních dat, bezpečnostní opatření a správnou zpětnou vazbu pro klienta.
+Cílem projektu je implementace kompletní aplikace pro správu úkolů (task management) v rámci jednotlivých projektů a týmů.  
+Projekt zahrnuje jak backendovou část (Spring Boot, PostgreSQL), tak frontendovou část (React.js).  
 
-Tato implementace slouží jako ukázková realizace ucelené větve podle profesionálních standardů pro vývoj podnikových aplikací.
+Uživatelé mohou vytvářet projekty, přidělovat týmy, přidávat úkoly a sledovat jejich stav v přehledném Kanban rozhraní.  
+Důraz je kladen na:
+
+- správnou architekturu a rozvržení vrstev
+- bezpečnostní opatření a role-based přístup
+- validaci vstupních dat a jednotné API chybové odpovědi
+- použitelné a přístupné rozhraní (UX)
 
 ---
 
 ## 🧱 Architektura systému
 
-Aplikace je postavena na vícevrstvé architektuře s jasným oddělením odpovědností:
+### Backend (Spring Boot)
 
-| Vrstva        | Třídy / Obsah                                        | Odpovědnost                                                  |
-|---------------|------------------------------------------------------|---------------------------------------------------------------|
-| **Entity**    | `Task`, `Project`, `User`, `Team`                   | Datový model, mapování na databázi (JPA)                     |
-| **DTO**       | `TaskDTO`                                            | Přenos dat + validace vstupů (`@NotNull`, `@NotBlank`)      |
-| **Repository**| `TaskRepository`, `ProjectRepository`, `UserRepository` | Přístup k datům pomocí Spring Data JPA                      |
-| **Controller**| `TaskController`                                     | Definice REST API, validace pomocí `@Valid`, zpětná vazba    |
-| **Mapper**    | `TaskMapper`                                         | Konverze mezi `Task` a `TaskDTO`                            |
-| **Config**    | `SecurityConfig`, `JwtService`, `JwtAuthFilter`     | Bezpečnostní nastavení a autentizace                        |
-| **Handler**   | `GlobalExceptionHandler`                             | Jednotná validace a zpětná vazba při chybách                 |
+| Vrstva       | Obsah / Třídy                                               | Odpovědnost                                                                 |
+|--------------|-------------------------------------------------------------|------------------------------------------------------------------------------|
+| `Entity`     | `Task`, `Project`, `User`, `Team`, `Role`                   | Datový model (JPA)                                                          |
+| `DTO`        | `TaskDTO`, `ProjectDTO`, `UserDTO`                          | Validace a přenos dat                                                       |
+| `Repository` | `TaskRepository`, `ProjectRepository`, `UserRepository`     | Datová vrstva s pomocí Spring Data JPA                                     |
+| `Controller` | `TaskController`, `ProjectController`, ...                  | REST API, validace přes `@Valid`                                            |
+| `Mapper`     | `TaskMapper`, `ProjectMapper`, ...                          | Konverze mezi entitami a DTO                                                |
+| `Config`     | `SecurityConfig`, `JwtService`, `JwtAuthFilter`             | Zabezpečení, JWT tokeny, autentizace                                        |
+| `Handler`    | `GlobalExceptionHandler`                                    | Jednotná zpětná vazba při chybách (HTTP 400, 403, 404...)                   |
 
 ---
 
-## 🔐 Implementované bezpečnostní mechanismy
+### Frontend (React.js)
 
-- **JWT autentizace** – přihlašování přes `/api/auth/login`, generování a kontrola tokenu
-- **Autorizace podle rolí** – role `manager`, `developer`, `tester`
-- **Omezení přístupu** – pouze oprávnění uživatelé mají přístup k určitým endpointům
-- **Spring Security** – konfigurace přes `SecurityConfig.java`, `@PreAuthorize`, role-based access
+- React + Vite + Bootstrap
+- React Router pro navigaci
+- JWT token v `localStorage` + `authService.js`
+- Komponenty: `TaskCard`, `KanbanBoardPage`, `ProjectDetailPage`, `TeamDetailPage`, `TaskModal`, ...
+- Role-based rendering (developer, tester, manager)
+- Drag & drop přes `@hello-pangea/dnd`
+
+---
+
+## 🔐 Bezpečnostní mechanismy
+
+- JWT autentizace (přihlašování přes `/api/auth/login`)
+- Role-based autorizace: `manager`, `developer`, `tester`
+- Endpointy chráněné pomocí `@PreAuthorize`, `SecurityConfig`
+- Oddělení veřejných a chráněných částí aplikace
 
 ---
 
 ## ✔️ Validace a zpětná vazba API
 
-- Validace je implementována přes anotace ve `TaskDTO.java`:
-  - `@NotBlank(message = "Title is required")`
-  - `@NotNull(message = "Project ID is required")`
-- Vstupy jsou validovány pomocí `@Valid` v `TaskController`
-- Chyby jsou vráceny jako čitelné JSON odpovědi díky `GlobalExceptionHandler.java`
+Validace probíhá pomocí anotací v DTO třídách:
 
-### 🔍 Příklad neplatného požadavku:
-**Request:**
-```json
-{
-  "title": "",
-  "status": "",
-  "projectId": null
-}
+```java
+@NotBlank(message = "Title is required")
+@NotNull(message = "Project ID is required")
