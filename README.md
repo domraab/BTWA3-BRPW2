@@ -1,6 +1,6 @@
-# 📌 Semestrální práce – Taskly (Správa úkolů v projektech)
+#  Semestrální práce – Taskly (Správa úkolů v projektech)
 
-## 🎯 Popis projektu a cíle práce
+##  Popis projektu a cíle práce
 
 Cílem projektu je implementace kompletní aplikace pro správu úkolů (task management) v rámci jednotlivých projektů a týmů.  
 Projekt zahrnuje jak backendovou část (Spring Boot, PostgreSQL), tak frontendovou část (React.js).  
@@ -15,7 +15,7 @@ Důraz je kladen na:
 
 ---
 
-## 🧱 Architektura systému
+##  Architektura systému
 
 ### Backend (Spring Boot)
 
@@ -42,7 +42,7 @@ Důraz je kladen na:
 
 ---
 
-## 🔐 Bezpečnostní mechanismy
+##  Bezpečnostní mechanismy
 
 - JWT autentizace (přihlašování přes `/api/auth/login`)
 - Role-based autorizace: `manager`, `developer`, `tester`
@@ -51,7 +51,7 @@ Důraz je kladen na:
 
 ---
 
-## ✔️ Validace a zpětná vazba API
+##  Validace a zpětná vazba API
 
 Validace probíhá pomocí anotací v DTO třídách:
 
